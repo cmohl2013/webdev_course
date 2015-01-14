@@ -96,6 +96,7 @@ class NewpostHandler(Handler):
         else:
             post = putData(title, content)
             self.redirect('/blog/' + str(post.key().id()))    
+  
             
 application = webapp2.WSGIApplication([
     ('/', MainPage),
