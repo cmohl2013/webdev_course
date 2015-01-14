@@ -2,6 +2,8 @@ import os
 import webapp2
 import jinja2
 from math import fmod
+from google.appengine.ext import db
+
 #jinja_env = jinja2.Environment(loader=jinja2.PackageLoader('templateapp', 'templates'))
             
 
@@ -12,6 +14,19 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), a
 
 #jinja_env.filters['fmod'] = fmod
 # render template here
+
+
+def putData(title, content):
+    post = Blogpost(title=title, content=content)
+    post.put()
+    return post         
+
+
+
+class Blogpost(db.Model):
+    title = db.StringProperty(required=True)
+    content = db.TextProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
 
 
 
@@ -47,8 +62,46 @@ class FizzbuzzHandler(Handler):
         #template = env.get_template('fizzbuzz.html')
         self.render('fizzbuzz.html', n=n)
         print n
+
+class BlogFrontpageHandler(Handler):
+    def get(self):
+        posts = db.GqlQuery("SELECT * FROM Blogpost ORDER BY created DESC ")
+
+        self.render('blog.html', posts = posts)
+
+class PostHandler(Handler):
+    def get(self, post_id):
+        #posts = db.GqlQuery("SELECT * FROM Blogpost ORDER BY created DESC ")
+        post = Blogpost.get_by_id(int(post_id))
+        #post = posts.get_by_id(post_id)
+        self.render('single_post.html', post=post)
+        #pass
+class NewpostHandler(Handler):
+    def get(self):
+        self.render('new_post.html')    
+
+    def post(self):
+        title = self.request.get('title')
+        content = self.request.get('content')
+        error = ''
+        if not title:
+            error = 'give a title'
+        if not content:
+            error = 'provide a content'    
+        if not content and not title:
+            error = 'provide content and title'
+        if error != '':    
+            self.render('new_post.html', error = error, title = title, content = content)    
+
+        else:
+            post = putData(title, content)
+            self.redirect('/blog/' + str(post.key().id()))    
+            
 application = webapp2.WSGIApplication([
     ('/', MainPage),
-    ('/fizzbuzz', FizzbuzzHandler)
+    ('/fizzbuzz', FizzbuzzHandler),
+    ('/blog', BlogFrontpageHandler),
+    ('/blog/newpost', NewpostHandler),
+    ('/blog/(\d+)', PostHandler)
     
 ], debug=True)  
